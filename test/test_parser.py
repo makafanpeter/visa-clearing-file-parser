@@ -133,34 +133,34 @@ class TestVisaBaseIIParser:
         assert result['Account Number Extension'] == '123'
         assert result['Floor Limit Indicator'] == '1'
 
-    # @patch('builtins.open', new_callable=mock_open)
-    # def test_detect_encoding_cp500_preferred(self, mock_file):
-    #     """Test encoding detection preferring CP500 when it has more digits."""
-    #     parser = VisaBaseIIParser()
-    #
-    #     # Mock file content that decodes better with CP500
-    #     mock_cp500_content = "123456789ABCD"  # More digits when decoded as CP500
-    #     mock_cp1252_content = "ABCDEFGHIJKLM"  # Fewer digits when decoded as CP1252
-    #
-    #     mock_file.return_value.read.return_value = b'test_data'
-    #
-    #     with patch('builtins.open', mock_open(read_data=b'test_data')):
-    #         with patch.object(bytes, 'decode') as mock_decode:
-    #             # Setup decode to return different content for different encodings
-    #             def decode_side_effect(encoding):
-    #                 if encoding == 'cp500':
-    #                     return mock_cp500_content
-    #                 elif encoding == 'cp1252':
-    #                     return mock_cp1252_content
-    #                 else:
-    #                     raise UnicodeDecodeError(encoding, b'', 0, 1, 'test error')
-    #
-    #             mock_decode.side_effect = decode_side_effect
-    #
-    #             result = parser._detect_encoding(Path('test.ctf'))
-    #
-    #             # Should choose cp500 because it has more digits (9 vs 0)
-    #             assert result == 'cp500'
+    @patch('builtins.open', new_callable=mock_open)
+    def test_detect_encoding_cp500_preferred(self, mock_file):
+        """Test encoding detection preferring CP500 when it has more digits."""
+        parser = VisaBaseIIParser()
+
+        # Mock file content that decodes better with CP500
+        mock_cp500_content = "123456789ABCD"  # More digits when decoded as CP500
+        mock_cp1252_content = "ABCDEFGHIJKLM"  # Fewer digits when decoded as CP1252
+
+        mock_file.return_value.read.return_value = b'test_data'
+
+        with patch('builtins.open', mock_open(read_data=b'test_data')):
+            with patch.object(bytes, 'decode') as mock_decode:
+                # Setup decode to return different content for different encodings
+                def decode_side_effect(encoding):
+                    if encoding == 'cp500':
+                        return mock_cp500_content
+                    elif encoding == 'cp1252':
+                        return mock_cp1252_content
+                    else:
+                        raise UnicodeDecodeError(encoding, b'', 0, 1, 'test error')
+
+                mock_decode.side_effect = decode_side_effect
+
+                result = parser._detect_encoding(Path('test.ctf'))
+
+                # Should choose cp500 because it has more digits (9 vs 0)
+                assert result == 'cp500'
 
     def test_detect_encoding_file_not_found(self):
         """Test encoding detection with non-existent file."""
@@ -249,56 +249,56 @@ class TestVisaBaseIIParser:
         assert '91' in parser._METADATA_TCs
         assert '92' in parser._METADATA_TCs
 
-    # @patch('visa_clearing.parser.Path.exists', return_value=True)
-    # @patch('builtins.open', new_callable=mock_open)
-    # def test_parse_file_with_metadata_transactions(self, mock_file, mock_exists):
-    #     """Test that metadata transactions are skipped during parsing."""
-    #     parser = VisaBaseIIParser()
-    #
-    #     # Based on your actual file format - each line appears to be exactly 168 characters
-    #     mock_lines = [
-    #         # Metadata transaction (90) - should be skipped
-    #         "90" + "48369625231" + " " * 155,  # 168 chars total
-    #
-    #         # Regular Sales Draft transaction (05) - should be processed
-    #         "05" + "004462214292764664000   24836965210800066650469000000000811000000000000   000000000995826onenergys.com            Liverpool    GB 7399L76PD     1009N0113549 4 010000",
-    #
-    #         # Another metadata transaction (91) - should be skipped
-    #         "91" + "0000000000000000000000000000000000000001000001000000000004      00000001000000002                  000000000000995" + " " * 71,
-    #
-    #         # Another metadata transaction (92) - should be skipped
-    #         "92" + "0000000000000000000000000000000000000001000001000000000005              000000003                  000000000000995" + " " * 71,
-    #     ]
-    #
-    #     # Verify all lines are exactly 168 characters (standard for Visa Base II)
-    #     for i, line in enumerate(mock_lines):
-    #         if len(line) != 168:
-    #             # Adjust line length to exactly 168
-    #             if len(line) < 168:
-    #                 mock_lines[i] = line + " " * (168 - len(line))
-    #             else:
-    #                 mock_lines[i] = line[:168]
-    #
-    #     # Verify line lengths after adjustment
-    #     for i, line in enumerate(mock_lines):
-    #         assert len(line) == 168, f"Line {i} has length {len(line)}, expected 168"
-    #
-    #     with patch.object(parser, '_detect_encoding', return_value='cp1252'):
-    #         # Mock the file content as both bytes (for encoding detection) and lines (for iteration)
-    #         file_content = '\n'.join(mock_lines)
-    #         mock_file.return_value.read.return_value = file_content.encode('cp1252')
-    #         mock_file.return_value.__iter__.return_value = iter(mock_lines)
-    #
-    #         transactions = list(parser.parse_file('test.ctf'))
-    #
-    #         # Debug output
-    #         print(f"Found {len(transactions)} transactions")
-    #         for i, t in enumerate(transactions):
-    #             print(f"Transaction {i}: code='{t.get('Transaction Code', 'MISSING')}'")
-    #
-    #         # Should only have 1 transaction (the Sales Draft with code '05')
-    #         assert len(transactions) == 1, f"Expected 1 transaction, got {len(transactions)}"
-    #         assert transactions[0]['Transaction Code'] == '05'
+    @patch('visa_clearing.parser.Path.exists', return_value=True)
+    @patch('builtins.open', new_callable=mock_open)
+    def test_parse_file_with_metadata_transactions(self, mock_file, mock_exists):
+        """Test that metadata transactions are skipped during parsing."""
+        parser = VisaBaseIIParser()
+
+        # Based on your actual file format - each line appears to be exactly 168 characters
+        mock_lines = [
+            # Metadata transaction (90) - should be skipped
+            "90" + "48369625231" + " " * 155,  # 168 chars total
+
+            # Regular Sales Draft transaction (05) - should be processed
+            "05" + "004462214292764664000   24836965210800066650469000000000811000000000000   000000000995826onenergys.com            Liverpool    GB 7399L76PD     1009N0113549 4 010000",
+
+            # Another metadata transaction (91) - should be skipped
+            "91" + "0000000000000000000000000000000000000001000001000000000004      00000001000000002                  000000000000995" + " " * 71,
+
+            # Another metadata transaction (92) - should be skipped
+            "92" + "0000000000000000000000000000000000000001000001000000000005              000000003                  000000000000995" + " " * 71,
+        ]
+
+        # Verify all lines are exactly 168 characters (standard for Visa Base II)
+        for i, line in enumerate(mock_lines):
+            if len(line) != 168:
+                # Adjust line length to exactly 168
+                if len(line) < 168:
+                    mock_lines[i] = line + " " * (168 - len(line))
+                else:
+                    mock_lines[i] = line[:168]
+
+        # Verify line lengths after adjustment
+        for i, line in enumerate(mock_lines):
+            assert len(line) == 168, f"Line {i} has length {len(line)}, expected 168"
+
+        with patch.object(parser, '_detect_encoding', return_value='cp1252'):
+            # Mock the file content as both bytes (for encoding detection) and lines (for iteration)
+            file_content = '\n'.join(mock_lines)
+            mock_file.return_value.read.return_value = file_content.encode('cp1252')
+            mock_file.return_value.__iter__.return_value = iter(mock_lines)
+
+            transactions = list(parser.parse_file('test.ctf'))
+
+            # Debug output
+            print(f"Found {len(transactions)} transactions")
+            for i, t in enumerate(transactions):
+                print(f"Transaction {i}: code='{t.get('Transaction Code', 'MISSING')}'")
+
+            # Should only have 1 transaction (the Sales Draft with code '05')
+            assert len(transactions) == 1, f"Expected 1 transaction, got {len(transactions)}"
+            assert transactions[0]['Transaction Code'] == '05'
 
     def test_account_number_masking_in_summary(self):
         """Test that account numbers are properly masked in summaries."""
@@ -345,65 +345,65 @@ class TestErrorHandling:
                     with pytest.raises(ParseError):
                         list(parser.parse_file('test.ctf'))
 
-    # def test_malformed_record_handling(self):
-    #     """Test handling of malformed records."""
-    #     parser = VisaBaseIIParser()
-    #
-    #     # Test with record that causes IndexError during field extraction
-    #     malformed_record = '05' + '0' + '0'  # Too short for field extraction
-    #
-    #     result = parser._parse_record(malformed_record)
-    #
-    #     # Should return None for malformed records that are too short
-    #     assert result is None
+    def test_malformed_record_handling(self):
+        """Test handling of malformed records."""
+        parser = VisaBaseIIParser()
+
+        # Test with record that causes IndexError during field extraction
+        malformed_record = '05' + '0' + '0'  # Too short for field extraction
+
+        result = parser._parse_record(malformed_record)
+
+        # Should return None for malformed records that are too short
+        assert result is None
 
 
 class TestIntegration:
     """Integration tests with realistic data."""
 
-    # def test_complete_transaction_parsing_workflow(self):
-    #     """Test complete workflow with multiple transaction types."""
-    #     parser = VisaBaseIIParser()
-    #
-    #     # Create realistic test data
-    #     mock_transactions = [
-    #         # Sales Draft with multiple TCRs
-    #         '05' + '0' + '0' + '4111111111111111' + '001' + '0' * 142,
-    #         '05' + '0' + '1' + '1' * 165,  # Additional TCR for same transaction
-    #         # Credit Voucher
-    #         '06' + '0' + '0' + '5555444433332222' + '002' + '1' * 142,
-    #         # Chargeback
-    #         '15' + '0' + '0' + '4000000000000002' + '003' + '2' * 142,
-    #     ]
-    #
-    #     # Pad all records to exactly 168 characters
-    #     mock_transactions = [txn[:168].ljust(168) for txn in mock_transactions]
-    #
-    #     with patch('visa_clearing.parser.Path.exists', return_value=True):
-    #         with patch.object(parser, '_detect_encoding', return_value='cp1252'):
-    #             with patch('builtins.open', mock_open()) as mock_file:
-    #                 mock_file.return_value.__iter__.return_value = iter(mock_transactions)
-    #                 mock_file.return_value.read.return_value = b'test'
-    #
-    #                 transactions = list(parser.parse_file('test.ctf'))
-    #
-    #                 # Should have 3 transactions (Sales Draft groups TCRs 0 and 1)
-    #                 assert len(transactions) == 3
-    #
-    #                 # Check transaction types
-    #                 assert transactions[0]['Transaction Code'] == '05'
-    #                 assert transactions[1]['Transaction Code'] == '06'
-    #                 assert transactions[2]['Transaction Code'] == '15'
-    #
-    #                 # Check that Sales Draft has both TCRs
-    #                 assert '0' in transactions[0]['TCRs_Present']
-    #                 assert '1' in transactions[0]['TCRs_Present']
-    #
-    #                 # Check that each transaction has the expected fields
-    #                 for txn in transactions:
-    #                     assert 'Transaction Description' in txn
-    #                     assert 'TCRs_Present' in txn
-    #                     assert txn['Transaction Description'] in parser.TC_DEFINITIONS.values()
+    def test_complete_transaction_parsing_workflow(self):
+        """Test complete workflow with multiple transaction types."""
+        parser = VisaBaseIIParser()
+
+        # Create realistic test data
+        mock_transactions = [
+            # Sales Draft with multiple TCRs
+            '05' + '0' + '0' + '4111111111111111' + '001' + '0' * 142,
+            '05' + '0' + '1' + '1' * 165,  # Additional TCR for same transaction
+            # Credit Voucher
+            '06' + '0' + '0' + '5555444433332222' + '002' + '1' * 142,
+            # Chargeback
+            '15' + '0' + '0' + '4000000000000002' + '003' + '2' * 142,
+        ]
+
+        # Pad all records to exactly 168 characters
+        mock_transactions = [txn[:168].ljust(168) for txn in mock_transactions]
+
+        with patch('visa_clearing.parser.Path.exists', return_value=True):
+            with patch.object(parser, '_detect_encoding', return_value='cp1252'):
+                with patch('builtins.open', mock_open()) as mock_file:
+                    mock_file.return_value.__iter__.return_value = iter(mock_transactions)
+                    mock_file.return_value.read.return_value = b'test'
+
+                    transactions = list(parser.parse_file('test.ctf'))
+
+                    # Should have 3 transactions (Sales Draft groups TCRs 0 and 1)
+                    assert len(transactions) == 3
+
+                    # Check transaction types
+                    assert transactions[0]['Transaction Code'] == '05'
+                    assert transactions[1]['Transaction Code'] == '06'
+                    assert transactions[2]['Transaction Code'] == '15'
+
+                    # Check that Sales Draft has both TCRs
+                    assert '0' in transactions[0]['TCRs_Present']
+                    assert '1' in transactions[0]['TCRs_Present']
+
+                    # Check that each transaction has the expected fields
+                    for txn in transactions:
+                        assert 'Transaction Description' in txn
+                        assert 'TCRs_Present' in txn
+                        assert txn['Transaction Description'] in parser.TC_DEFINITIONS.values()
 
 
 class TestCLI:
@@ -422,40 +422,40 @@ class TestCLI:
 class TestPerformance:
     """Performance and scalability tests."""
 
-    # def test_large_file_handling(self):
-    #     """Test parser performance with large number of transactions."""
-    #     parser = VisaBaseIIParser()
-    #
-    #     # Create mock data for 1000 transactions
-    #     num_transactions = 1000
-    #     mock_transactions = []
-    #
-    #     for i in range(num_transactions):
-    #         tc = '05' if i % 2 == 0 else '06'  # Alternate between Sales Draft and Credit Voucher
-    #         record = tc + '0' + '0' + f'{i:016d}' + ' ' * 149
-    #         mock_transactions.append(record[:168].ljust(168))
-    #
-    #     with patch('visa_clearing.parser.Path.exists', return_value=True):
-    #         with patch.object(parser, '_detect_encoding', return_value='cp1252'):
-    #             with patch('builtins.open', mock_open()) as mock_file:
-    #                 mock_file.return_value.__iter__.return_value = iter(mock_transactions)
-    #                 mock_file.return_value.read.return_value = b'test'
-    #
-    #                 import time
-    #                 start_time = time.time()
-    #
-    #                 transactions = list(parser.parse_file('test.ctf'))
-    #
-    #                 end_time = time.time()
-    #                 processing_time = end_time - start_time
-    #
-    #                 # Should complete in reasonable time (less than 2 seconds for 1000 transactions)
-    #                 assert processing_time < 2.0
-    #                 assert len(transactions) == num_transactions
-    #
-    #                 # Verify some transactions were parsed correctly
-    #                 assert transactions[0]['Transaction Code'] == '05'
-    #                 assert transactions[1]['Transaction Code'] == '06'
+    def test_large_file_handling(self):
+        """Test parser performance with large number of transactions."""
+        parser = VisaBaseIIParser()
+
+        # Create mock data for 1000 transactions
+        num_transactions = 1000
+        mock_transactions = []
+
+        for i in range(num_transactions):
+            tc = '05' if i % 2 == 0 else '06'  # Alternate between Sales Draft and Credit Voucher
+            record = tc + '0' + '0' + f'{i:016d}' + ' ' * 149
+            mock_transactions.append(record[:168].ljust(168))
+
+        with patch('visa_clearing.parser.Path.exists', return_value=True):
+            with patch.object(parser, '_detect_encoding', return_value='cp1252'):
+                with patch('builtins.open', mock_open()) as mock_file:
+                    mock_file.return_value.__iter__.return_value = iter(mock_transactions)
+                    mock_file.return_value.read.return_value = b'test'
+
+                    import time
+                    start_time = time.time()
+
+                    transactions = list(parser.parse_file('test.ctf'))
+
+                    end_time = time.time()
+                    processing_time = end_time - start_time
+
+                    # Should complete in reasonable time (less than 2 seconds for 1000 transactions)
+                    assert processing_time < 2.0
+                    assert len(transactions) == num_transactions
+
+                    # Verify some transactions were parsed correctly
+                    assert transactions[0]['Transaction Code'] == '05'
+                    assert transactions[1]['Transaction Code'] == '06'
 
 
 if __name__ == '__main__':

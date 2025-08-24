@@ -28,7 +28,7 @@ jobs:
       - name: Test coverage
         run: |
           coverage run -m pytest
-          coverage report --fail-under 0 -m
+          coverage report --fail-under 85 -m
 
   build:
     needs: test
