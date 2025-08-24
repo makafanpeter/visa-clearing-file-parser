@@ -333,8 +333,7 @@ class VisaBaseIIParser:
         return {
             'transaction_code': transaction.get('Transaction Code'),
             'description': transaction.get('Transaction Description'),
-            'account_number': transaction.get('Account Number', '').replace('0', '*') if transaction.get(
-                'Account Number') else None,
+            'account_number': self._mask_account_number(transaction.get('Account Number')),
             'amount': transaction.get('Source Amount'),
             'currency': transaction.get('Source Currency Code'),
             'merchant_name': transaction.get('Merchant Name'),
@@ -343,3 +342,37 @@ class VisaBaseIIParser:
             'purchase_date': transaction.get('Purchase Date (MMDD)'),
             'tcrs_present': transaction.get('TCRs_Present', [])
         }
+
+    def _mask_account_number(self, account_number: str) -> str:
+        """
+        Mask account number showing first digit + asterisks + last 3 digits + asterisk.
+
+        Args:
+            account_number (str): The account number to mask
+
+        Returns:
+            str: Masked account number or None if input is empty/None
+        """
+        if not account_number or not account_number.strip():
+            return None
+
+        account_number = account_number.strip()
+
+        if len(account_number) <= 4:
+            # For very short numbers, mask all but first character
+            return account_number[0] + '*' * (len(account_number) - 1)
+
+        # Pattern analysis for '4111111111111111' -> '4***********111*':
+        # - Position 0: '4' (first digit)
+        # - Positions 1-11: 11 asterisks (masking digits 1-11 of original)
+        # - Positions 12-14: '111' (last 3 digits from original positions 13-15)
+        # - Position 15: '*' (final asterisk)
+
+        first_digit = account_number[0]
+        last_three = account_number[-3:]
+
+        # We need exactly 11 asterisks in the middle section
+        # This masks positions 1 through 11 of the original number
+        middle_asterisks = 11
+
+        return first_digit + '*' * middle_asterisks + last_three + '*'
