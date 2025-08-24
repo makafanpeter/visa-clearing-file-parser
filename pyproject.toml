@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "Peter Makafa", email = "706435+makafanpeter@users.noreply.github.com"},
+    {name = "Peter Dev", email = "706435+makafanpeter@users.noreply.github.com"},
 ]
 keywords = ["visa", "clearing", "payment", "transaction", "finance", "baseii"]
 classifiers = [
