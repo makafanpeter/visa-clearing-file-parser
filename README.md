@@ -34,7 +34,7 @@ for transaction in parser.parse_file('transactions.ctf'):
     print("-" * 40)
 ```
 
-###💻 CLI Usage
+### 💻 CLI Usage
 ```bash
 # Parse a file and display summary
 visa-clearing-parser parse transactions.ctf --format summary
