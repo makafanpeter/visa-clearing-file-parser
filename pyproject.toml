@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "visa-clearing-file-parser"
+dynamic = ["version"]
+description = "A Python library for parsing Visa BASE II Clearing Transaction Files"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Peter Dev", email = "4706435+makafanpeter@users.noreply.github.com"},
+]
+keywords = ["visa", "clearing", "payment", "transaction", "finance", "baseii"]
+
+[project.urls]
+Homepage = "https://github.com/makafanpeter/visa-clearing-file-parser"
+Repository = "https://github.com/makafanpeter/visa-clearing-file-parser.git"
+"Bug Tracker" = "https://github.com/makafanpeter/visa-clearing-file-parser/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "visa_clearing.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
