@@ -367,6 +367,8 @@ class TestIntegration:
 
         # Create realistic test data
         mock_transactions = [
+            # Header record
+            '90' + '48369625231' + ' ' * 155,
             # Sales Draft with multiple TCRs
             '05' + '0' + '0' + '4111111111111111' + '001' + '0' * 142,
             '05' + '0' + '1' + '1' * 165,  # Additional TCR for same transaction
@@ -374,16 +376,25 @@ class TestIntegration:
             '06' + '0' + '0' + '5555444433332222' + '002' + '1' * 142,
             # Chargeback
             '15' + '0' + '0' + '4000000000000002' + '003' + '2' * 142,
+            # Footer records
+            '91' + '0' * 36 + '001000001000000000004' + ' ' * 6 + '00000001000000002' + ' ' * 18 + '000000000000995' + ' ' * 71,
+            '92' + '0' * 36 + '001000001000000000005' + ' ' * 14 + '000000003' + ' ' * 18 + '000000000000995' + ' ' * 71
         ]
 
         # Pad all records to exactly 168 characters
         mock_transactions = [txn[:168].ljust(168) for txn in mock_transactions]
 
+        # Create the mock content that will be returned by read()
+        mock_content = '\n'.join(mock_transactions)
+
+        mock_file = mock_open(read_data=mock_content)
+        mock_file.return_value.__iter__ = lambda self: iter(mock_content.splitlines())
+
         with patch('visa_clearing.parser.Path.exists', return_value=True):
             with patch.object(parser, '_detect_encoding', return_value='cp1252'):
-                with patch('builtins.open', mock_open()) as mock_file:
-                    mock_file.return_value.__iter__.return_value = iter(mock_transactions)
-                    mock_file.return_value.read.return_value = b'test'
+                with patch('builtins.open', mock_file):
+                    #mock_file.return_value.__iter__.return_value = iter(mock_transactions)
+                    #mock_file.return_value.read.return_value = mock_content
 
                     transactions = list(parser.parse_file('test.ctf'))
 
