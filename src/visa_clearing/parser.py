@@ -262,7 +262,7 @@ class VisaBaseIIParser:
             with open(file_path, 'r', encoding=self.encoding, errors='replace') as f:
                 for line_num, line in enumerate(f, 1):
                     try:
-                        record_str = line.strip()
+                        record_str = line
                         if len(record_str) != self.record_length:
                             LOGGER.debug(f"Skipping line {line_num}: incorrect length {len(record_str)}")
                             continue

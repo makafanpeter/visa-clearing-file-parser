@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import mock_open, patch, MagicMock
 from pathlib import Path
 import tempfile
-
+import time
 from visa_clearing import VisaBaseIIParser
 from visa_clearing.exceptions import VisaClearingError, ParseError, EncodingError
 
@@ -142,12 +142,16 @@ class TestVisaBaseIIParser:
         mock_cp500_content = "123456789ABCD"  # More digits when decoded as CP500
         mock_cp1252_content = "ABCDEFGHIJKLM"  # Fewer digits when decoded as CP1252
 
-        mock_file.return_value.read.return_value = b'test_data'
+        test_data = b'\xF1\xF2\xF3\xF4\xF5\xC1\xC2\xC3'
+        mock_file.return_value.read.return_value = test_data
 
-        with patch('builtins.open', mock_open(read_data=b'test_data')):
-            with patch.object(bytes, 'decode') as mock_decode:
-                # Setup decode to return different content for different encodings
-                def decode_side_effect(encoding):
+        with patch('builtins.open', mock_open()) as mock_open_func:
+
+            mock_file_obj = MagicMock()
+
+            # Create a custom bytes-like object that can be decoded
+            class MockBytes:
+                def decode(self, encoding, errors='strict'):
                     if encoding == 'cp500':
                         return mock_cp500_content
                     elif encoding == 'cp1252':
@@ -155,12 +159,13 @@ class TestVisaBaseIIParser:
                     else:
                         raise UnicodeDecodeError(encoding, b'', 0, 1, 'test error')
 
-                mock_decode.side_effect = decode_side_effect
+            mock_file_obj.read.return_value = MockBytes()
+            mock_open_func.return_value.__enter__.return_value = mock_file_obj
 
-                result = parser._detect_encoding(Path('test.ctf'))
+            result = parser._detect_encoding(Path('test.ctf'))
 
-                # Should choose cp500 because it has more digits (9 vs 0)
-                assert result == 'cp500'
+            # Should choose cp500 because it has more digits (9 vs 0)
+            assert result == 'cp500'
 
     def test_detect_encoding_file_not_found(self):
         """Test encoding detection with non-existent file."""
@@ -283,22 +288,26 @@ class TestVisaBaseIIParser:
         for i, line in enumerate(mock_lines):
             assert len(line) == 168, f"Line {i} has length {len(line)}, expected 168"
 
+            # Create the mock content that will be returned by read()
+        mock_content = '\n'.join(mock_lines)
+
+        mock_file = mock_open(read_data=mock_content)
+        mock_file.return_value.__iter__ = lambda self: iter(mock_content.splitlines())
+
         with patch.object(parser, '_detect_encoding', return_value='cp1252'):
             # Mock the file content as both bytes (for encoding detection) and lines (for iteration)
-            file_content = '\n'.join(mock_lines)
-            mock_file.return_value.read.return_value = file_content.encode('cp1252')
-            mock_file.return_value.__iter__.return_value = iter(mock_lines)
+            with patch('builtins.open', mock_file):
 
-            transactions = list(parser.parse_file('test.ctf'))
+                transactions = list(parser.parse_file('test.ctf'))
 
-            # Debug output
-            print(f"Found {len(transactions)} transactions")
-            for i, t in enumerate(transactions):
-                print(f"Transaction {i}: code='{t.get('Transaction Code', 'MISSING')}'")
+                # Debug output
+                print(f"Found {len(transactions)} transactions")
+                for i, t in enumerate(transactions):
+                    print(f"Transaction {i}: code='{t.get('Transaction Code', 'MISSING')}'")
 
-            # Should only have 1 transaction (the Sales Draft with code '05')
-            assert len(transactions) == 1, f"Expected 1 transaction, got {len(transactions)}"
-            assert transactions[0]['Transaction Code'] == '05'
+                # Should only have 1 transaction (the Sales Draft with code '05')
+                assert len(transactions) == 1, f"Expected 1 transaction, got {len(transactions)}"
+                assert transactions[0]['Transaction Code'] == '05'
 
     def test_account_number_masking_in_summary(self):
         """Test that account numbers are properly masked in summaries."""
@@ -350,7 +359,7 @@ class TestErrorHandling:
         parser = VisaBaseIIParser()
 
         # Test with record that causes IndexError during field extraction
-        malformed_record = '05' + '0' + '0'  # Too short for field extraction
+        malformed_record = '05' + '0'   # Too short for field extraction
 
         result = parser._parse_record(malformed_record)
 
@@ -443,16 +452,32 @@ class TestPerformance:
 
         for i in range(num_transactions):
             tc = '05' if i % 2 == 0 else '06'  # Alternate between Sales Draft and Credit Voucher
-            record = tc + '0' + '0' + f'{i:016d}' + ' ' * 149
-            mock_transactions.append(record[:168].ljust(168))
+            tcq = '0'  # Transaction Code Qualifier
+            tcr_seq = '0'  # TCR sequence number (0 for first/main TCR)
+
+            # Create a properly formatted record
+            # Format: TC(2) + TCQ(1) + TCR_SEQ(1) + data fields + padding
+            record_data = f'{i:016d}' + '1' * 148  # 16-digit transaction ID + padding
+            record = tc + tcq + tcr_seq + record_data
+
+            # Ensure exactly 168 characters
+            record = record[:168].ljust(168)
+            mock_transactions.append(record)
+
+        mock_content = '\n'.join(mock_transactions)
+
+        # Create a properly configured mock file
+        mock_file_instance = mock_open(read_data=mock_content.encode('cp1252'))
+
+        # Mock the file iteration to return individual lines
+        mock_file_instance.return_value.__iter__ = lambda self: iter(mock_content.splitlines())
 
         with patch('visa_clearing.parser.Path.exists', return_value=True):
             with patch.object(parser, '_detect_encoding', return_value='cp1252'):
-                with patch('builtins.open', mock_open()) as mock_file:
-                    mock_file.return_value.__iter__.return_value = iter(mock_transactions)
-                    mock_file.return_value.read.return_value = b'test'
+                with patch('builtins.open',  mock_file_instance):
+                    #mock_file.return_value.__iter__.return_value = iter(mock_transactions)
+                    #mock_file.return_value.read.return_value = b'test'
 
-                    import time
                     start_time = time.time()
 
                     transactions = list(parser.parse_file('test.ctf'))
@@ -461,7 +486,7 @@ class TestPerformance:
                     processing_time = end_time - start_time
 
                     # Should complete in reasonable time (less than 2 seconds for 1000 transactions)
-                    assert processing_time < 2.0
+                    assert processing_time < 2.0, f"Processing took {processing_time:.2f}s, expected < 2.0s"
                     assert len(transactions) == num_transactions
 
                     # Verify some transactions were parsed correctly
