@@ -62,10 +62,12 @@ where = ["src"]
 minversion = "7.0"
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = ["tests"]
+pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["src/visa_clearing"]
-omit = ["tests/*", "src/visa_clearing/cli.py"]
+source = ["src/visa_clearing", "tests"]
+omit = ["src/visa_clearing/cli.py"]
+branch = true
 
 [tool.coverage.report]
 exclude_lines = [
